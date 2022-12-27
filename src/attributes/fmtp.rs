@@ -16,7 +16,7 @@ use anyhow::Result;
 #[derive(Debug)]
 pub struct Fmtp<'a> {
     pub key: u8,
-    pub values: HashMap<&'a str, &'a str>
+    pub values: HashMap<&'a str, Option<&'a str>>
 }
 
 impl<'a> TryFrom<&'a str> for Fmtp<'a> {
@@ -27,8 +27,10 @@ impl<'a> TryFrom<&'a str> for Fmtp<'a> {
         let key: u8 = code.parse()?;
 
         for value in value.split(';') {
-            let (k, v) = tuple2_from_split(value, '=', "invalid fmtp!")?;
-            values.insert(k, v);
+            let mut value_spt = value.split('=');
+            values.insert(value_spt.next().ok_or_else(|| {
+                anyhow::anyhow!("invalid fmtp!")
+            })?, value_spt.next());
         }
 
         Ok(Self {

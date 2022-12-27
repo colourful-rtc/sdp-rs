@@ -129,7 +129,17 @@ impl<'a> TryFrom<&'a str> for Ssrc<'a> {
     /// assert!(Ssrc::try_from("1175220440 name:v1SBHP7c76XqYcWx").is_err());
     /// ```
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
-        let (k, v) = tuple2_from_split(value, ' ', "invalid ssrc!")?;
+        let mut iter = value.splitn(2, ' ');
+        let k = iter.next().ok_or_else(|| {
+            anyhow!("invalid ssrc!")
+        })?;
+        
+        let v = iter.next().ok_or_else(|| {
+            anyhow!("invalid ssrc!")
+        })?;
+        
+        println!("{}", value);
+        
         Ok(Self {
             key: k.parse()?, 
             value: SsrcAttr::try_from(v)?,

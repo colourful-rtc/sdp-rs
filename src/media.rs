@@ -1,3 +1,4 @@
+use crate::attributes::*;
 use anyhow::{
     ensure,
     anyhow
@@ -55,7 +56,9 @@ pub enum Proto {
     Rtp,
     Avp,
     Savp,
-    Savpf
+    Savpf,
+    Dtls,
+    Sctp,
 }
 
 /// media port.
@@ -128,7 +131,7 @@ pub struct Port {
 /// either the next "m=" field or by the end of the session description.
 /// A media field has several sub-fields:
 #[derive(Debug)]
-pub struct Media {
+pub struct Media<'a> {
     pub encoding: Encoding,
     pub port: Port,
     pub protos: Vec<Proto>,
@@ -155,10 +158,19 @@ pub struct Media {
     /// For media using other transport protocols, the <fmt> field is
     /// protocol specific.  Rules for interpretation of the <fmt> sub-
     /// field MUST be defined when registering new protocols.
-    pub fmts: Vec<u8>
+    pub fmts: Vec<u8>,
+    /// Attributes ("a=")
+    pub attributes: Vec<Attributes<'a>>,
 }
 
-impl fmt::Display for Media {
+impl<'a> Media<'a> {
+    pub(crate) fn push(&mut self, data: &'a str) -> anyhow::Result<()> {
+        self.attributes.push(Attributes::try_from(data)?);
+        Ok(())
+    }
+}
+
+impl fmt::Display for Media<'_> {
     /// # Unit Test
     ///
     /// ```
@@ -166,6 +178,7 @@ impl fmt::Display for Media {
     /// use sdp::*;
     ///
     /// let media = Media {
+    ///     attributes: vec![],
     ///     encoding: Encoding::Video,
     ///     port: Port {
     ///         num: 9,
@@ -222,7 +235,7 @@ impl fmt::Display for Media {
     }
 }
 
-impl<'a> TryFrom<&'a str> for Media {
+impl<'a> TryFrom<&'a str> for Media<'a> {
     type Error = anyhow::Error;
     /// # Unit Test
     ///
@@ -260,10 +273,13 @@ impl<'a> TryFrom<&'a str> for Media {
 
         let mut fmts = Vec::with_capacity(30);
         for f in values[3..].iter() {
-            fmts.push(f.parse()?);
+            if f != &"webrtc-datachannel" {
+                fmts.push(f.parse()?);   
+            }
         }
 
         Ok(Self {
+            attributes: Vec::with_capacity(20),
             encoding: Encoding::try_from(values[0])?,
             port: Port::try_from(values[1])?,
             protos,
@@ -403,6 +419,8 @@ impl fmt::Display for Proto {
             Self::Avp =>    "AVP",
             Self::Savp =>   "SAVP",
             Self::Savpf =>  "SAVPF",
+            Self::Dtls =>   "DTLS",
+            Self::Sctp =>   "SCTP",
         })
     }
 }
@@ -430,6 +448,8 @@ impl<'a> TryFrom<&'a str> for Proto {
             "AVP" =>    Ok(Self::Avp),
             "SAVP" =>   Ok(Self::Savp),
             "SAVPF" =>  Ok(Self::Savpf),
+            "DTLS" =>   Ok(Self::Dtls),
+            "SCTP" =>   Ok(Self::Sctp),
             _ => Err(anyhow!("invalid media proto!"))
         }
     }

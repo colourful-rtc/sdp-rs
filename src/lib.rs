@@ -166,11 +166,11 @@ pub struct Sdp<'a> {
     /// Attributes ("a=")
     pub attributes: Vec<Attributes<'a>>,
     /// Media ("m=")
-    pub media: Vec<Media>,
+    pub medias: Vec<Media<'a>>,
 }
 
 impl<'a> Sdp<'a> {
-    pub fn handle_line(&mut self, key: Key, data: &'a str) -> anyhow::Result<()> {
+    fn handle_line(&mut self, key: Key, data: &'a str, in_media: &mut bool) -> anyhow::Result<()> {
         Ok(match key {
             Key::Origin => self.origin = Some(Origin::try_from(data)?),
             Key::SessionName => self.session_name = util::placeholder(data),
@@ -183,9 +183,20 @@ impl<'a> Sdp<'a> {
             Key::Timing => self.timing = Some(Timing::try_from(data)?),
             Key::RepeatTimes => self.repeat_times = Some(RepeatTimes::try_from(data)?),
             Key::TimeZones => self.time_zones.push(TimeZones::try_from(data)?),
-            Key::Attributes => self.attributes.push(Attributes::try_from(data)?),
-            Key::Media => self.media.push(Media::try_from(data)?),
             Key::EncryptionKey => self.encryption_key = Some(EncryptionKey::try_from(data)?),
+            Key::Attributes => {
+                if *in_media {
+                    if let Some(medias) = self.medias.last_mut() {
+                        medias.push(data)?;
+                    }
+                } else {
+                    self.attributes.push(Attributes::try_from(data)?);
+                }
+            },
+            Key::Media => {
+                self.medias.push(Media::try_from(data)?);
+                *in_media = true;
+            },
         })
     }
 }
@@ -195,11 +206,12 @@ impl<'a> TryFrom<&'a str> for Sdp<'a> {
     #[rustfmt::skip]
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
         let mut sdp = Self::default();
+        let mut in_media = false;
         for line in value.lines() {
             if !line.is_empty() {
                 let (key, data) = line.split_at(2);
                 if let Ok(k) = Key::try_from(key) {
-                    sdp.handle_line(k, data)?;
+                    sdp.handle_line(k, data, &mut in_media)?;
                 }   
             }
         }

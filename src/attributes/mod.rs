@@ -1,14 +1,12 @@
 mod rtp;
 mod mid;
 mod fmtp;
-mod codec;
 mod kind;
 mod ssrc;
 mod orient;
 mod extension;
 
 pub use orient::Orient;
-pub use codec::Codec;
 pub use extension::*;
 pub use kind::Kind;
 pub use mid::Mid;
@@ -81,7 +79,7 @@ pub enum Attributes<'a> {
     /// clock-rate = integer
     /// encoding-params = channels
     /// channels = integer
-    Rtpmap(RtpMap),
+    Rtpmap(RtpMap<'a>),
     /// Name:  fmtp
     /// Value:  fmtp-value
     /// Usage Level:  media
@@ -385,7 +383,7 @@ impl<'a> TryFrom<&'a str> for Attributes<'a> {
     /// assert_eq!(value.channels, None);
     /// ```
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
-        let mut iter = value.split(':');
+        let mut iter = value.splitn(2, ':');
         let key = iter.next().ok_or_else(|| {
             anyhow!("invalid attributes!")
         })?;
@@ -394,7 +392,7 @@ impl<'a> TryFrom<&'a str> for Attributes<'a> {
             None => return Ok(Self::Other(key, None)),
             Some(v) => v,
         };
-        
+
         Ok(match key {
             "fmtp"      => Self::Fmtp(Fmtp::try_from(v)?),
             "rtpmap"    => Self::Rtpmap(RtpMap::try_from(v)?),

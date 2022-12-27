@@ -19,10 +19,10 @@ use anyhow::{
 pub fn short_time(time: &str) -> Result<f64> {
     let (value, last) = time.split_at(time.len() - 1);
     Ok(match last {
-        "d" => parse_f64(value)? * 86400.0,
-        "h" => parse_f64(value)? * 3600.0,
-        "m" => parse_f64(value)? * 60.0,
-        "s" => parse_f64(value)?,
+        "d" => value.parse::<f64>()? * 86400.0,
+        "h" => value.parse::<f64>()? * 3600.0,
+        "m" => value.parse::<f64>()? * 60.0,
+        "s" => value.parse::<f64>()?,
         _ => time.parse::<f64>()?
     })
 }
@@ -92,8 +92,4 @@ pub fn tuple3_from_split<'a>(
     }
     
     Ok((v1, v2, v3))
-}
-
-fn parse_f64(value: &str) -> Result<f64> {
-    Ok(value.parse::<f64>()?)
 }

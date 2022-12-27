@@ -1,5 +1,4 @@
 use crate::util::tuple2_from_split;
-use super::Codec;
 use anyhow::{
     Result,
     ensure
@@ -71,13 +70,13 @@ use std::{
 /// packetization is required, the "a=ptime:" attribute is used as given 
 /// in [Section 6.4](https://datatracker.ietf.org/doc/html/rfc8866#section-6.4).
 #[derive(Debug)]
-pub struct RtpValue {
-    pub codec: Codec,
+pub struct RtpValue<'a> {
+    pub codec: &'a str,
     pub frequency: Option<u64>,
     pub channels: Option<u8>
 }
 
-impl fmt::Display for RtpValue {
+impl fmt::Display for RtpValue<'_> {
     /// # Unit Test
     ///
     /// ```
@@ -106,7 +105,7 @@ impl fmt::Display for RtpValue {
     }
 }
 
-impl<'a> TryFrom<&'a str> for RtpValue {
+impl<'a> TryFrom<&'a str> for RtpValue<'a> {
     type Error = anyhow::Error;
     /// # Unit Test
     ///
@@ -126,7 +125,7 @@ impl<'a> TryFrom<&'a str> for RtpValue {
         ensure!(!values.is_empty(), "invalid attributes rtpmap!");
         ensure!(values[0].len() > 0, "invalid attributes rtpmap!");
         Ok(Self {
-            codec: Codec::try_from(values[0])?,
+            codec: values[0],
             frequency: if let Some(c) = values.get(1) { Some(c.parse()?) } else { None },
             channels: if let Some(c) = values.get(2) { Some(c.parse()?) } else { None }
         })
@@ -134,12 +133,12 @@ impl<'a> TryFrom<&'a str> for RtpValue {
 }
 
 #[derive(Debug)]
-pub struct RtpMap {
+pub struct RtpMap<'a> {
     pub key: u8, 
-    pub value: RtpValue,
+    pub value: RtpValue<'a>,
 }
 
-impl<'a> TryFrom<&'a str> for RtpMap {
+impl<'a> TryFrom<&'a str> for RtpMap<'a> {
     type Error = anyhow::Error;
     /// # Unit Test
     ///
